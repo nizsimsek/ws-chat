@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WS Chat</title>
+        <style>
+            :root {
+                width: 100%;
+                height: 100%;
+            }
+            body {
+                padding: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .chat {
+                display: none;
+                flex-direction: column;
+                width: 550px;
+                height: 700px;
+                border: 2px solid black;
+                padding: 15px;
+                border-radius: 20px;
+            }
+
+            .message-area {
+                width: 550px;
+                height: 100%;
+                overflow: auto;
+            }
+
+            .chat div {
+                width: 100%;
+                gap: 10px;
+            }
+
+            input {
+                width: 350px;
+                height: 26px;
+                border-radius: 20px;
+                padding: 0 10px;
+                border: 2px solid black;
+                color: black;
+            }
+
+            input::placeholder {
+                color: black;
+            }
+
+            input::-moz-placeholder {
+                color: black;
+            }
+
+            input::-webkit-input-placeholder {
+                color: black;
+            }
+
+            button {
+                background-color: green;
+                border: 2px solid green;
+                color: white;
+                height: 30px;
+                width: 150px;
+                border-radius: 20px;
+            }
+        </style>
+    </head>
+
+    <div class="login">
+        <input type="text" id="username" placeholder="Please Enter Nickname" />
+        <button onclick="enterRoom()">Enter Room</button>
+    </div>
+    <div class="chat">
+        <div class="message-area" id="messages"></div>
+        <div>
+            <input type="text" id="message" placeholder="Type Message.." />
+            <button onclick="sendMessage()">Send Message</button>
+        </div>
+    </div>
+
+    <body>
+        <script>
+            this.userName;
+            this.msgList = [];
+            this.ws = new WebSocket("ws://localhost:9000");
+
+            document.getElementById('username').value = '';
+            document.getElementById('message').value = '';
+
+            const enterRoom = () => {
+                this.userName = document.getElementById("username").value;
+
+                document.getElementsByClassName("chat")[0].style.display = "flex";
+                document.getElementsByClassName("login")[0].style.display = "none";
+
+                this.ws.onopen = () => {
+                    this.roomOpen = true;
+                    this.ws.send(
+                        JSON.stringify({
+                            userName: this.userName,
+                            roomId: this.roomId,
+                            roomName: this.roomName,
+                            event: "login",
+                        })
+                    );
+                };
+
+                this.ws.onmessage = (message) => {
+                    const data = JSON.parse(message.data);
+                    console.log("onmessage data : ", data);
+
+                    this.onlineNum = data.num;
+
+                    if (data.event == "login") {
+                        this.msgList.push({
+                            content: `Welcome ${data.userName} to room ${data.roomName}~`,
+                        });
+                    } else if (data.event == "logout") {
+                        console.log("data : ", data);
+                        this.msgList.push({
+                            content: `${data.userName} Leave the room`,
+                        });
+                    } else {
+                        const self = this.userName === data.userName;
+                        if (self) return;
+
+                        this.msgList.push({
+                            name: data.userName,
+                            self: false,
+                            content: data.content,
+                        });
+                    }
+
+                    const messages = document.getElementById("messages");
+                    messages.innerHTML = "";
+                    this.msgList.forEach((msg) => {
+                        messages.innerHTML += `<span>${msg.content}</span>`;
+                    });
+                };
+
+                this.ws.onclose = () => {};
+
+                const close = () => {
+                    this.ws && this.ws.close();
+                };
+            };
+
+            const sendMessage = () => {
+                const message = document.getElementById("message").value;
+                this.ws.send(
+                    JSON.stringify({
+                        userName: this.userName,
+                        roomId: this.roomId,
+                        roomName: this.roomName,
+                        content: message,
+                    })
+                );
+            };
+        </script>
+    </body>
+</html>
